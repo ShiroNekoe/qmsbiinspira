@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\RevisionRequest;
 use App\Models\RevisionLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -14,28 +15,35 @@ class RevisionRequestController extends Controller
     // Menampilkan board QMS
     public function index()
     {
-        $tasks = RevisionRequest::with('creator:id,name') // ambil nama pembuat
-            ->latest()
-            ->get()
-            ->map(function ($task) {
-                return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'description' => $task->description,
-                    'status' => $task->status,
-                    'urgency' => $task->urgency,
-                    'deadline' => $task->deadline,
-                    'related_url' => $task->related_url,
-                    'attachment' => $task->attachment,
-                    'created_by_name' => $task->creator?->name,
-                ];
-            })
-            ->groupBy('status');
+        // Ambil semua task
+      $tasks = RevisionRequest::with(['creator:id,name', 'assignee:id,name'])
+    ->latest()
+    ->get()
+    ->map(function ($task) {
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'status' => $task->status,
+            'urgency' => $task->urgency,
+            'deadline' => $task->deadline,
+            'related_url' => $task->related_url,
+            'attachment' => $task->attachment,
+            'created_by_name' => $task->creator?->name,
+            'assigned_to' => $task->assigned_to,
+            'assigned_to_name' => $task->assignee?->name, // <<< sekarang bener
+        ];
+    })
+    ->groupBy('status');
+
+        // Ambil semua user yang bisa ditugaskan (technician)
+        $users = User::select('id','name','role')->where('role','technician')->get();
 
         return Inertia::render('Requests/Index', [
             'tasks' => $tasks,
             'user_role' => auth()->user()->role,
             'user_id' => auth()->id(),
+            'users' => $users,
         ]);
     }
 
@@ -84,12 +92,12 @@ class RevisionRequestController extends Controller
             ->with('success', 'Request created successfully');
     }
 
-    // Update status, estimasi, assign technician (hanya technician)
+    // Update status, estimasi, assign technician (technician & admin)
     public function updateStatus(Request $request, $id)
     {
         $user = auth()->user();
-        if ($user->role !== 'technician') {
-            abort(403, "Only technicians can update status or estimations");
+        if (!in_array($user->role, ['technician','admin'])) {
+            abort(403, "Only technicians or admin can update status or estimations");
         }
 
         $validated = $request->validate([
@@ -110,7 +118,7 @@ class RevisionRequestController extends Controller
             'estimation_end' => $validated['estimation_end'] ?? $task->estimation_end,
             'actual_start' => $validated['actual_start'] ?? $task->actual_start,
             'actual_end' => $validated['actual_end'] ?? $task->actual_end,
-            'assigned_to' => $validated['assign_to'] ?? $task->assigned_to, // assign task ke user
+            'assigned_to' => $validated['assign_to'] ?? $task->assigned_to,
         ]);
 
         RevisionLog::create([

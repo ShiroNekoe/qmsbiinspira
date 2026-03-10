@@ -14,12 +14,13 @@ class RevisionRequest extends Model
     protected $fillable = [
         'title',
         'description',
-        'related_url',
-        'created_by',
-        'attachment',
-        'urgency',
         'status',
+        'urgency',
         'deadline',
+        'related_url',
+        'attachment',
+        'created_by',
+        'assigned_to',
         'estimation_start',
         'estimation_end',
         'actual_start',
@@ -50,5 +51,11 @@ class RevisionRequest extends Model
     public function scopeUrgency($query, $urgency)
     {
         return $query->where('urgency', $urgency);
+    }
+
+        // Relasi ke user yang ditugaskan (assignee)
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }

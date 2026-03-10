@@ -100,7 +100,7 @@ export default function KanbanBoard({ tasks, user_role }: { tasks: Partial<Board
 
                 {/* SENDER */}
                 <p className="text-xs text-gray-400 mb-1 truncate">
-                    From: {task.created_by_name}
+                    Platform: {task.created_by_name}
                 </p>
 
                 {/* DEADLINE */}
