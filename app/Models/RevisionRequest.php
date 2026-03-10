@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class RevisionRequest extends Model
+{
+    use HasFactory;
+
+    // Field yang bisa diisi mass assignment
+    protected $fillable = [
+        'title',
+        'description',
+        'related_url',
+        'created_by',
+        'attachment',
+        'urgency',
+        'status',
+        'deadline',
+        'estimation_start',
+        'estimation_end',
+        'actual_start',
+        'actual_end',
+    ];
+
+    // Hubungan ke user yang bikin request
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Accessor untuk attachment (url lengkap)
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if ($this->attachment) {
+            return asset('storage/' . $this->attachment);
+        }
+        return null;
+    }
+
+    // Scopes untuk filter status atau urgency
+    public function scopeStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopeUrgency($query, $urgency)
+    {
+        return $query->where('urgency', $urgency);
+    }
+}
