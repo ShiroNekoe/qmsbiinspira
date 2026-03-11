@@ -15,28 +15,26 @@ class RevisionRequestController extends Controller
     // Menampilkan board QMS
     public function index()
     {
-        // Ambil semua task
-      $tasks = RevisionRequest::with(['creator:id,name', 'assignee:id,name'])
-    ->latest()
-    ->get()
-    ->map(function ($task) {
-        return [
-            'id' => $task->id,
-            'title' => $task->title,
-            'description' => $task->description,
-            'status' => $task->status,
-            'urgency' => $task->urgency,
-            'deadline' => $task->deadline,
-            'related_url' => $task->related_url,
-            'attachment' => $task->attachment,
-            'created_by_name' => $task->creator?->name,
-            'assigned_to' => $task->assigned_to,
-            'assigned_to_name' => $task->assignee?->name, // <<< sekarang bener
-        ];
-    })
-    ->groupBy('status');
+        $tasks = RevisionRequest::with(['creator:id,name', 'assignee:id,name'])
+            ->latest()
+            ->get()
+            ->map(function ($task) {
+                return [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'status' => $task->status,
+                    'urgency' => $task->urgency,
+                    'deadline' => $task->deadline,
+                    'related_url' => $task->related_url,
+                    'attachment' => $task->attachment,
+                    'created_by_name' => $task->creator?->name,
+                    'assigned_to' => $task->assigned_to,
+                    'assigned_to_name' => $task->assignee?->name,
+                ];
+            })
+            ->groupBy('status');
 
-        // Ambil semua user yang bisa ditugaskan (technician)
         $users = User::select('id','name','role')->where('role','technician')->get();
 
         return Inertia::render('Requests/Index', [
@@ -72,7 +70,7 @@ class RevisionRequestController extends Controller
             'related_url' => 'nullable|string',
             'urgency' => 'required|in:high,medium,low',
             'deadline' => 'nullable|date',
-            'attachment' => 'nullable|file|mimes:jpg,png,jpeg,pdf|max:5120', // max 5MB
+            'attachment' => 'nullable|file|mimes:jpg,png,jpeg,pdf|max:5120',
         ]);
 
         $task = RevisionRequest::create([
@@ -96,9 +94,10 @@ class RevisionRequestController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $user = auth()->user();
-        if (!in_array($user->role, ['technician','admin'])) {
-            abort(403, "Only technicians or admin can update status or estimations");
-        }
+
+        // Jika role unit, tolak update tapi kasih feedback
+        if (!in_array($user->role, ['technician','admin'])) 
+            { abort(403, "Only technicians or admin can update status or estimations"); }
 
         $validated = $request->validate([
             'status' => 'required|in:request,todo,in_progress,in_review,complete',
@@ -106,7 +105,7 @@ class RevisionRequestController extends Controller
             'estimation_end' => 'nullable|date',
             'actual_start' => 'nullable|date',
             'actual_end' => 'nullable|date',
-            'assign_to' => 'nullable|exists:users,id', // siapa yang ditugaskan
+            // 'assign_to' => 'nullable|exists:users,id',
         ]);
 
         $task = RevisionRequest::findOrFail($id);
@@ -118,7 +117,7 @@ class RevisionRequestController extends Controller
             'estimation_end' => $validated['estimation_end'] ?? $task->estimation_end,
             'actual_start' => $validated['actual_start'] ?? $task->actual_start,
             'actual_end' => $validated['actual_end'] ?? $task->actual_end,
-            'assigned_to' => $validated['assign_to'] ?? $task->assigned_to,
+            // 'assigned_to' => $validated['assign_to'] ?? $task->assigned_to,
         ]);
 
         RevisionLog::create([
