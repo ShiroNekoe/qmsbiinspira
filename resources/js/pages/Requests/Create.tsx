@@ -9,7 +9,7 @@ export default function Create() {
         related_url: "",
         urgency: "low",
         deadline: "",
-        attachments: [] as File[],
+        attachment: ""
     })
 
     const submit = (e: React.FormEvent) => {
@@ -102,16 +102,15 @@ export default function Create() {
                                 />
                             </div>
 
-                        {/* ATTACHMENT */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-700">Attachment</label>
-                            <input
-                                type="file"
-                                multiple
-                                onChange={e => setData("attachments", e.target.files ? Array.from(e.target.files) : [])}
-                                className="mt-2 w-full border rounded-lg p-3"
-                            />
-                        </div>
+                            {/* ATTACHMENT */}
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Attachment</label>
+                                <input
+                                    type="file"
+                                    onChange={e => setData("attachment", e.target.files?.[0] ?? null)}
+                                    className="mt-2 w-full border rounded-lg p-3"
+                                />
+                            </div>
                         </div>
 
                         {/* BUTTON */}
