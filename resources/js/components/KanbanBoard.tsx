@@ -3,23 +3,31 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { router } from "@inertiajs/react"
 import TaskModal from "./TaskModal"
 
-// Simple toast notification
-function showToast(message: string) {
-    const toast = document.createElement("div")
-    toast.innerText = message
-    toast.className =
-        "fixed top-5 right-5 bg-yellow-400 text-black px-4 py-2 rounded shadow-lg z-50 animate-slideIn"
-    document.body.appendChild(toast)
-    setTimeout(() => toast.remove(), 2500)
+/* =========================
+   TYPES
+========================= */
+
+type User = {
+    id: number
+    name: string
+    role: string
 }
 
 type Task = {
     id: number
     title: string
-    unit: string
+    description?: string
+    status: string
     urgency: "low" | "medium" | "high"
-    created_by_name: string
+    created_by_name?: string
+    assigned_to?: number
+    assigned_to_name?: string
     deadline?: string
+    estimation_start?: string
+    estimation_end?: string
+    actual_start?: string
+    actual_end?: string
+    attachment?: string
 }
 
 type Board = {
@@ -30,19 +38,35 @@ type Board = {
     complete: Task[]
 }
 
-type TaskModalProps = {
-    task: Task | null
-    onClose: () => void
-    readOnly?: boolean
+/* =========================
+   TOAST
+========================= */
+
+function showToast(message: string) {
+    const toast = document.createElement("div")
+    toast.innerText = message
+    toast.className =
+        "fixed top-5 right-5 bg-yellow-400 text-black px-4 py-2 rounded shadow-lg z-50 animate-slideIn"
+
+    document.body.appendChild(toast)
+
+    setTimeout(() => toast.remove(), 2500)
 }
+
+/* =========================
+   COMPONENT
+========================= */
 
 export default function KanbanBoard({
     tasks,
+    users,
     user_role,
 }: {
     tasks: Partial<Board>
+    users: User[]
     user_role: string
 }) {
+
     const columns: (keyof Board)[] = [
         "request",
         "todo",
@@ -70,21 +94,27 @@ export default function KanbanBoard({
         return "bg-green-100 text-green-600"
     }
 
-    // Hanya admin & technician yang bisa drag
     const canDrag = user_role === "admin" || user_role === "technician"
 
+    /* =========================
+       DRAG DROP
+    ========================= */
+
     const onDragEnd = (result: DropResult) => {
+
         const { source, destination, draggableId } = result
+
         if (!destination) return
+
         if (
             source.droppableId === destination.droppableId &&
             source.index === destination.index
-        )
-            return
+        ) return
 
         if (!canDrag) {
-            // Toast + rollback
+
             showToast("Hanya admin atau technician yang bisa memindahkan task!")
+
             return
         }
 
@@ -93,98 +123,171 @@ export default function KanbanBoard({
 
         const startTasks = Array.from(board[startColumn])
         const finishTasks = Array.from(board[finishColumn])
+
         const task = startTasks[source.index]
 
         if (startColumn === finishColumn) {
+
             startTasks.splice(source.index, 1)
             startTasks.splice(destination.index, 0, task)
-            setBoard({ ...board, [startColumn]: startTasks })
+
+            setBoard({
+                ...board,
+                [startColumn]: startTasks
+            })
+
         } else {
+
             startTasks.splice(source.index, 1)
             finishTasks.splice(destination.index, 0, task)
-            setBoard({ ...board, [startColumn]: startTasks, [finishColumn]: finishTasks })
+
+            setBoard({
+                ...board,
+                [startColumn]: startTasks,
+                [finishColumn]: finishTasks
+            })
+
         }
 
-        // Update backend
+        /* UPDATE BACKEND */
+
         router.patch(
             `/requests/${draggableId}/status`,
-            { status: finishColumn },
-            { preserveScroll: true, preserveState: true }
+            {
+                status: finishColumn
+            },
+            {
+                preserveScroll: true,
+                preserveState: true
+            }
         )
     }
 
-    const renderTaskCard = (task: Task, index?: number) => (
+    /* =========================
+       TASK CARD
+    ========================= */
+
+    const renderTaskCard = (task: Task) => (
+
         <div
             key={task.id}
             onClick={() => openTask(task)}
             className="bg-white border rounded-lg p-3 mb-3 cursor-pointer hover:shadow-md transition-all duration-200 break-words"
         >
-            <p className="font-medium text-sm mb-1">{task.title}</p>
+
+            <p className="font-medium text-sm mb-1">
+                {task.title}
+            </p>
+
             <p className="text-xs text-gray-400 mb-1 truncate">
                 Platform: {task.created_by_name}
             </p>
+
             {task.deadline && (
+
                 <p className="text-xs text-gray-400 mb-2 truncate">
                     Deadline: {task.deadline}
                 </p>
+
             )}
+
             <div className="flex justify-between items-center">
-                <p className="text-xs text-gray-500 truncate">{task.unit}</p>
+
+                <p className="text-xs text-gray-500 truncate">
+                    {task.assigned_to_name || "Unassigned"}
+                </p>
+
                 <span className={`text-xs px-2 py-1 rounded ${urgencyColor(task.urgency)}`}>
                     {task.urgency}
                 </span>
+
             </div>
+
         </div>
+
     )
+
+    /* =========================
+       RENDER
+    ========================= */
 
     return (
         <>
+
             <DragDropContext onDragEnd={onDragEnd}>
+
                 <div className="grid grid-cols-5 gap-4">
+
                     {columns.map((col) => (
+
                         <Droppable droppableId={col} key={col}>
+
                             {(provided) => (
+
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
                                     className="bg-gray-50 rounded-xl p-3 min-h-[400px]"
                                 >
+
                                     <h2 className="font-semibold mb-3 capitalize text-sm text-gray-600">
                                         {col.replace("_", " ")}
                                     </h2>
-                                    {board[col]?.map((task, index) =>
+
+                                    {board[col]?.map((task, index) => (
+
                                         canDrag ? (
+
                                             <Draggable
                                                 key={task.id}
                                                 draggableId={task.id.toString()}
                                                 index={index}
                                             >
+
                                                 {(provided) => (
+
                                                     <div
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
                                                         {...provided.dragHandleProps}
                                                     >
+
                                                         {renderTaskCard(task)}
+
                                                     </div>
+
                                                 )}
+
                                             </Draggable>
+
                                         ) : (
-                                            renderTaskCard(task, index)
+
+                                            renderTaskCard(task)
+
                                         )
-                                    )}
+
+                                    ))}
+
                                     {provided.placeholder}
+
                                 </div>
+
                             )}
+
                         </Droppable>
+
                     ))}
+
                 </div>
+
             </DragDropContext>
+
+            {/* MODAL */}
 
             <TaskModal
                 task={selectedTask}
+                users={users}
                 onClose={closeTask}
-                readOnly={!canDrag}
             />
 
             <style>{`
@@ -196,6 +299,7 @@ export default function KanbanBoard({
                     animation: slideIn 0.3s ease forwards;
                 }
             `}</style>
+
         </>
     )
 }

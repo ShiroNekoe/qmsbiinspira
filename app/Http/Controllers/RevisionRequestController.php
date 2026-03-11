@@ -10,9 +10,13 @@ use Inertia\Inertia;
 
 class RevisionRequestController extends Controller
 {
-    // Semua route harus login
 
-    // Menampilkan board QMS
+    /*
+    |--------------------------------------------------------------------------
+    | Show QMS Board
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
         $tasks = RevisionRequest::with(['creator:id,name', 'assignee:id,name'])
@@ -28,40 +32,60 @@ class RevisionRequestController extends Controller
                     'deadline' => $task->deadline,
                     'related_url' => $task->related_url,
                     'attachment' => $task->attachment,
+
                     'created_by_name' => $task->creator?->name,
+
                     'assigned_to' => $task->assigned_to,
                     'assigned_to_name' => $task->assignee?->name,
+
+                    'estimation_start' => $task->estimation_start,
+                    'estimation_end' => $task->estimation_end,
+
+                    'actual_start' => $task->actual_start,
+                    'actual_end' => $task->actual_end,
                 ];
             })
             ->groupBy('status');
 
-        $users = User::select('id','name','role')->where('role','technician')->get();
-
+        $users = User::select('id', 'name', 'role')
+            ->where('role', 'technician')
+            ->get();
+        
         return Inertia::render('Requests/Index', [
             'tasks' => $tasks,
+            'users' => $users,
             'user_role' => auth()->user()->role,
             'user_id' => auth()->id(),
-            'users' => $users,
         ]);
     }
 
-    // Form create request (hanya unit)
+
+    /*
+    |--------------------------------------------------------------------------
+    | Create Request (Only Unit)
+    |--------------------------------------------------------------------------
+    */
+
     public function create()
     {
-        $user = auth()->user();
-        if ($user->role !== 'unit') {
-            abort(403, "Only units can create requests");
+        if (auth()->user()->role !== 'unit') {
+            abort(403, 'Only units can create requests');
         }
 
         return Inertia::render('Requests/Create');
     }
 
-    // Store request (hanya unit)
+
+    /*
+    |--------------------------------------------------------------------------
+    | Store Request
+    |--------------------------------------------------------------------------
+    */
+
     public function store(Request $request)
     {
-        $user = auth()->user();
-        if ($user->role !== 'unit') {
-            abort(403, "Only units can create requests");
+        if (auth()->user()->role !== 'unit') {
+            abort(403, 'Only units can create requests');
         }
 
         $validated = $request->validate([
@@ -80,54 +104,112 @@ class RevisionRequestController extends Controller
             'urgency' => $validated['urgency'],
             'deadline' => $validated['deadline'] ?? null,
             'status' => 'request',
-            'created_by' => $user->id,
+            'created_by' => auth()->id(),
             'attachment' => $request->file('attachment')
-                                ? $request->file('attachment')->store('revision_requests', 'public')
-                                : null,
+                ? $request->file('attachment')->store('revision_requests', 'public')
+                : null,
         ]);
 
-        return redirect()->route('requests.index')
+        return redirect()
+            ->route('requests.index')
             ->with('success', 'Request created successfully');
     }
 
-    // Update status, estimasi, assign technician (technician & admin)
-    public function updateStatus(Request $request, $id)
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Status + Assign Technician
+    |--------------------------------------------------------------------------
+    */
+
+ public function updateStatus(Request $request, $id)
     {
         $user = auth()->user();
 
-        // Jika role unit, tolak update tapi kasih feedback
-        if (!in_array($user->role, ['technician','admin'])) 
-            { abort(403, "Only technicians or admin can update status or estimations"); }
+        // hanya admin & technician yang boleh update
+        if (!in_array($user->role, ['technician', 'admin'])) {
+            abort(403, "Only technicians or admin can update requests");
+        }
+
+        $task = RevisionRequest::findOrFail($id);
+
+        $oldStatus = $task->status;
 
         $validated = $request->validate([
             'status' => 'required|in:request,todo,in_progress,in_review,complete',
+
+            'assigned_to' => 'nullable|exists:users,id',
+
             'estimation_start' => 'nullable|date',
             'estimation_end' => 'nullable|date',
+
             'actual_start' => 'nullable|date',
             'actual_end' => 'nullable|date',
-            // 'assign_to' => 'nullable|exists:users,id',
         ]);
 
-        $task = RevisionRequest::findOrFail($id);
-        $oldStatus = $task->status;
+        // hanya update field yang dikirim
+        $updateData = array_filter([
+            'status' => $validated['status'] ?? null,
 
-        $task->update([
-            'status' => $validated['status'],
-            'estimation_start' => $validated['estimation_start'] ?? $task->estimation_start,
-            'estimation_end' => $validated['estimation_end'] ?? $task->estimation_end,
-            'actual_start' => $validated['actual_start'] ?? $task->actual_start,
-            'actual_end' => $validated['actual_end'] ?? $task->actual_end,
-            // 'assigned_to' => $validated['assign_to'] ?? $task->assigned_to,
-        ]);
+            'assigned_to' => $validated['assigned_to'] ?? null,
 
-        RevisionLog::create([
-            'revision_id' => $task->id,
-            'from_status' => $oldStatus,
-            'to_status' => $validated['status'],
-            'changed_by' => $user->id,
-            'changed_at' => now(),
-        ]);
+            'estimation_start' => $validated['estimation_start'] ?? null,
+            'estimation_end' => $validated['estimation_end'] ?? null,
+
+            'actual_start' => $validated['actual_start'] ?? null,
+            'actual_end' => $validated['actual_end'] ?? null,
+        ], fn ($value) => !is_null($value));
+
+        $task->update($updateData);
+
+        // simpan log perubahan status
+        if ($oldStatus !== $task->status) {
+            RevisionLog::create([
+                'revision_id' => $task->id,
+                'from_status' => $oldStatus,
+                'to_status' => $task->status,
+                'changed_by' => $user->id,
+                'changed_at' => now(),
+            ]);
+        }
 
         return back()->with('success', 'Request updated successfully');
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Show Detail (Optional)
+    |--------------------------------------------------------------------------
+    */
+
+    public function show($id)
+    {
+        $task = RevisionRequest::with(['creator', 'assignee'])->findOrFail($id);
+
+        return Inertia::render('Requests/Show', [
+            'task' => $task
+        ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Request (Admin Only)
+    |--------------------------------------------------------------------------
+    */
+
+    public function destroy($id)
+    {
+        $user = auth()->user();
+
+        if ($user->role !== 'admin') {
+            abort(403, 'Only admin can delete request');
+        }
+
+        $task = RevisionRequest::findOrFail($id);
+        $task->delete();
+
+        return back()->with('success', 'Request deleted');
     }
 }

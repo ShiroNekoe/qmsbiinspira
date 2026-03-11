@@ -1,12 +1,17 @@
 import { X, Calendar, Link2 } from "lucide-react";
-import { useForm } from "@inertiajs/react";
-import { usePage } from "@inertiajs/react";
+import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
+
+type User = {
+    id: number;
+    name: string;
+    role: string;
+};
 
 type TaskModalProps = {
     task: any;
     onClose: () => void;
-    users?: { id: number; name: string; role: string }[];
+    users?: User[];
 };
 
 export default function TaskModal({ task, onClose, users = [] }: TaskModalProps) {
@@ -21,16 +26,19 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
         low: "bg-green-100 text-green-600",
     };
 
-    const { auth } = usePage().props;
+    const { auth }: any = usePage().props;
     const userRole = auth.user.role;
 
     const { data, setData, patch, processing } = useForm({
         status: task.status || "request",
+
         estimation_start: task.estimation_start || "",
         estimation_end: task.estimation_end || "",
+
         actual_start: task.actual_start || "",
         actual_end: task.actual_end || "",
-        assign_to: task.assigned_to || "",
+
+        assigned_to: task.assigned_to || "",   // ✅ FIXED
     });
 
     const submit = (e: React.FormEvent) => {
@@ -39,9 +47,9 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
     };
 
     const attachments = task.attachment
-        ? (Array.isArray(task.attachment)
+        ? Array.isArray(task.attachment)
             ? task.attachment
-            : task.attachment.split(","))
+            : task.attachment.split(",")
         : [];
 
     const isImage = (file: string) => {
@@ -49,7 +57,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
     };
 
     return (
-
         <>
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
@@ -83,7 +90,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                     </div>
 
-
                     {/* BODY */}
 
                     <div className="p-6 space-y-6 flex-1 overflow-y-auto">
@@ -102,8 +108,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                         </div>
 
-
-                        {/* ATTACHMENT PREVIEW */}
+                        {/* ATTACHMENT */}
 
                         {attachments.length > 0 && (
 
@@ -122,14 +127,12 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                         if (isImage(file)) {
 
                                             return (
-
                                                 <img
                                                     key={index}
                                                     src={url}
                                                     onClick={() => setPreview(url)}
                                                     className="rounded-lg cursor-pointer object-cover h-28 w-full hover:scale-105 transition"
                                                 />
-
                                             );
 
                                         }
@@ -156,8 +159,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                         )}
 
-
-                        {/* PLATFORM INFO */}
+                        {/* INFO */}
 
                         <div className="grid md:grid-cols-2 gap-4">
 
@@ -173,7 +175,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                             </div>
 
-
                             <div className="bg-gray-50 rounded-lg p-4">
 
                                 <p className="text-xs text-gray-500 mb-1">
@@ -185,7 +186,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 </p>
 
                             </div>
-
 
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
 
@@ -207,8 +207,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                         </div>
 
-
-                        {/* ESTIMATION INFO (VISIBLE FOR UNIT) */}
+                        {/* ESTIMATION INFO */}
 
                         <div className="grid grid-cols-2 gap-4">
 
@@ -234,41 +233,15 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                         </div>
 
-
-                        {/* RELATED URL */}
-
-                        {task.related_url && (
-
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-center justify-between">
-
-                                <div className="flex items-center gap-2 text-blue-600">
-                                    <Link2 size={16} />
-                                    <span className="text-sm">Related Link</span>
-                                </div>
-
-                                <a
-                                    href={task.related_url}
-                                    target="_blank"
-                                    className="text-sm font-medium text-blue-600 hover:underline"
-                                >
-                                    Open
-                                </a>
-
-                            </div>
-
-                        )}
-
-
-                        {/* FORM UPDATE (ADMIN & TECHNICIAN ONLY) */}
+                        {/* FORM UPDATE */}
 
                         {(userRole === "technician" || userRole === "admin") && (
 
                             <form onSubmit={submit} className="space-y-4 border-t pt-4">
 
                                 <h3 className="text-sm font-semibold text-gray-600">
-                                    Update Status & Estimation
+                                    Update Task
                                 </h3>
-
 
                                 <div className="grid grid-cols-2 gap-2">
 
@@ -288,7 +261,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                                 </div>
 
-
                                 <div className="grid grid-cols-2 gap-2">
 
                                     <input
@@ -307,37 +279,50 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                                 </div>
 
+                                {/* ASSIGN TECHNICIAN */}
+<div>
 
-                                <div>
+    <label className="text-xs text-gray-500">
+        Assign Technician
+    </label>
 
-                                    <label className="text-xs text-gray-500">
-                                        Assign To
-                                    </label>
+    <select
+        value={data.assigned_to}
+        onChange={e => setData("assigned_to", e.target.value)}
+        className="mt-1 w-full border rounded-lg p-2 text-sm"
+    >
 
-                                    <select
-                                        value={data.assign_to}
-                                        onChange={e => setData("assign_to", e.target.value)}
-                                        className="mt-1 w-full border rounded-lg p-2 text-sm"
-                                    >
+        <option value="">
+            -- Unassigned --
+        </option>
 
-                                        <option value="">
-                                            -- Unassigned --
-                                        </option>
+        {users && users.length > 0 ? (
 
-                                        {users
-                                            .filter(u => u.role === "technician")
-                                            .map(u => (
+            users
+                .filter(u => u.role === "technician")
+                .map(u => {
 
-                                                <option key={u.id} value={u.id}>
-                                                    {u.name}
-                                                </option>
+                    console.log("TECHNICIAN:", u); // debug console
 
-                                            ))}
+                    return (
+                        <option key={u.id} value={u.id}>
+                            {u.name}
+                        </option>
+                    )
 
-                                    </select>
+                })
 
-                                </div>
+        ) : (
 
+            <option disabled>
+                No technician found
+            </option>
+
+        )}
+
+    </select>
+
+</div>
 
                                 <div className="flex justify-end">
 
@@ -361,8 +346,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
             </div>
 
-
-            {/* IMAGE PREVIEW OVERLAY */}
+            {/* IMAGE PREVIEW */}
 
             {preview && (
 
