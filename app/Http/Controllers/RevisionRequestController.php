@@ -7,15 +7,13 @@ use App\Models\RevisionLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Notifications\TaskStatusUpdated;
+use App\Services\WhatsappService;
 
 class RevisionRequestController extends Controller
 {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Show QMS Board
-    |--------------------------------------------------------------------------
-    */
+
 
     public function index()
     {
@@ -50,7 +48,7 @@ class RevisionRequestController extends Controller
         $users = User::select('id', 'name', 'role')
             ->where('role', 'technician')
             ->get();
-        
+
         return Inertia::render('Requests/Index', [
             'tasks' => $tasks,
             'users' => $users,
@@ -58,13 +56,6 @@ class RevisionRequestController extends Controller
             'user_id' => auth()->id(),
         ]);
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Create Request (Only Unit)
-    |--------------------------------------------------------------------------
-    */
 
     public function create()
     {
@@ -75,12 +66,6 @@ class RevisionRequestController extends Controller
         return Inertia::render('Requests/Create');
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Store Request
-    |--------------------------------------------------------------------------
-    */
 
     public function store(Request $request)
     {
@@ -115,18 +100,10 @@ class RevisionRequestController extends Controller
             ->with('success', 'Request created successfully');
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Status + Assign Technician
-    |--------------------------------------------------------------------------
-    */
-
- public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, $id)
     {
         $user = auth()->user();
 
-        // hanya admin & technician yang boleh update
         if (!in_array($user->role, ['technician', 'admin'])) {
             abort(403, "Only technicians or admin can update requests");
         }
@@ -137,33 +114,26 @@ class RevisionRequestController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|in:request,todo,in_progress,in_review,complete',
-
             'assigned_to' => 'nullable|exists:users,id',
-
             'estimation_start' => 'nullable|date',
             'estimation_end' => 'nullable|date',
-
             'actual_start' => 'nullable|date',
             'actual_end' => 'nullable|date',
         ]);
 
-        // hanya update field yang dikirim
         $updateData = array_filter([
             'status' => $validated['status'] ?? null,
-
             'assigned_to' => $validated['assigned_to'] ?? null,
-
             'estimation_start' => $validated['estimation_start'] ?? null,
             'estimation_end' => $validated['estimation_end'] ?? null,
-
             'actual_start' => $validated['actual_start'] ?? null,
             'actual_end' => $validated['actual_end'] ?? null,
-        ], fn ($value) => !is_null($value));
+        ], fn($value) => !is_null($value));
 
         $task->update($updateData);
 
-        // simpan log perubahan status
         if ($oldStatus !== $task->status) {
+
             RevisionLog::create([
                 'revision_id' => $task->id,
                 'from_status' => $oldStatus,
@@ -171,17 +141,30 @@ class RevisionRequestController extends Controller
                 'changed_by' => $user->id,
                 'changed_at' => now(),
             ]);
+
+            $unitUser = User::find($task->created_by);
+
+            if ($unitUser) {
+
+                // EMAIL
+                $unitUser->notify(new TaskStatusUpdated($task));
+
+                // WHATSAPP
+                if ($unitUser->phone) {
+
+                    $message =
+                        "Update Request QMS\n\n" .
+                        "Judul: {$task->title}\n" .
+                        "Status Baru: {$task->status}\n\n" .
+                        "Silakan cek dashboard QMS.";
+
+                    WhatsappService::send($unitUser->phone, $message);
+                }
+            }
         }
 
         return back()->with('success', 'Request updated successfully');
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Show Detail (Optional)
-    |--------------------------------------------------------------------------
-    */
 
     public function show($id)
     {
@@ -191,13 +174,6 @@ class RevisionRequestController extends Controller
             'task' => $task
         ]);
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Delete Request (Admin Only)
-    |--------------------------------------------------------------------------
-    */
 
     public function destroy($id)
     {

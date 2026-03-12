@@ -3,6 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\RevisionRequestController;
+use App\Models\User;
+use App\Notifications\TaskStatusUpdated;
+use App\Models\RevisionRequest;
+use App\Services\WhatsappService;
+use Illuminate\Support\Facades\Mail;
+
 
 Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
@@ -23,6 +29,17 @@ Route::patch('/requests/{id}/status',
 
 Route::get('/requests/create', [RevisionRequestController::class,'create']);
 Route::post('/requests', [RevisionRequestController::class,'store']);
+
+Route::get('/test-wa', function () {
+
+    $phone = "6289515779877"; // ganti dengan nomor kamu
+
+    $message = "halo nyekk monyekkkkk🚀";
+
+    WhatsappService::send($phone, $message);
+
+    return "WA Sent";
+});
 
 });
 
