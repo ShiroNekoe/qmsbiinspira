@@ -26,19 +26,23 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
         low: "bg-green-100 text-green-600",
     };
 
+    // ✅ progress mapping
+    const progressMap: Record<string, number> = {
+        request: 10,
+        todo: 25,
+        in_progress: 60,
+        in_review: 85,
+        complete: 100,
+    };
+
     const { auth }: any = usePage().props;
     const userRole = auth.user.role;
 
     const { data, setData, patch, processing } = useForm({
         status: task.status || "request",
-
         estimation_start: task.estimation_start || "",
         estimation_end: task.estimation_end || "",
-
-        actual_start: task.actual_start || "",
-        actual_end: task.actual_end || "",
-
-        assigned_to: task.assigned_to || "",   // ✅ FIXED
+        assigned_to: task.assigned_to || "",
     });
 
     const submit = (e: React.FormEvent) => {
@@ -46,11 +50,8 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
         patch(`/requests/${task.id}/status`);
     };
 
-    const attachments = task.attachment
-        ? Array.isArray(task.attachment)
-            ? task.attachment
-            : task.attachment.split(",")
-        : [];
+    // ✅ MULTI ATTACHMENT (dari relation)
+    const attachments = task.attachments || [];
 
     const isImage = (file: string) => {
         return file.match(/\.(jpg|jpeg|png|webp|gif)$/i);
@@ -62,16 +63,25 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                 <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl overflow-y-auto max-h-[90vh] flex flex-col">
 
-                    {/* HEADER */}
+                    {/* ✅ PROGRESS BAR (NEW, di atas banget) */}
+                    <div className="w-full bg-gray-200 h-2">
+                        <div
+                            className="h-2 bg-blue-500 transition-all duration-500"
+                            style={{ width: `${progressMap[task.status] || 0}%` }}
+                        />
+                    </div>
 
+                    <div className="text-xs text-gray-500 px-5 pt-2">
+                        Progress: {progressMap[task.status] || 0}%
+                    </div>
+
+                    {/* HEADER */}
                     <div className="flex justify-between items-center border-b p-5">
 
                         <div>
-
                             <h2 className="text-xl font-bold">{task.title}</h2>
 
                             <div className="flex gap-2 mt-2">
-
                                 <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-600">
                                     {task.status}
                                 </span>
@@ -79,9 +89,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 <span className={`px-2 py-1 text-xs rounded ${urgencyColor[task.urgency] || ""}`}>
                                     {task.urgency}
                                 </span>
-
                             </div>
-
                         </div>
 
                         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
@@ -91,13 +99,10 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                     </div>
 
                     {/* BODY */}
-
                     <div className="p-6 space-y-6 flex-1 overflow-y-auto">
 
                         {/* DESCRIPTION */}
-
                         <div>
-
                             <p className="text-sm font-semibold text-gray-500 mb-2">
                                 Description
                             </p>
@@ -105,27 +110,22 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                             <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700">
                                 {task.description || "No description"}
                             </div>
-
                         </div>
 
                         {/* ATTACHMENT */}
-
-                        {attachments.length > 0 && (
-
+                            {attachments.length > 0 && (
                             <div>
-
                                 <p className="text-sm font-semibold text-gray-500 mb-2">
                                     Attachments
                                 </p>
 
                                 <div className="grid grid-cols-3 gap-3">
 
-                                    {attachments.map((file: string, index: number) => {
+                                    {attachments.map((file: any, index: number) => {
 
-                                        const url = `/storage/${file}`;
+                                        const url = `/storage/${file.file_path}`;
 
-                                        if (isImage(file)) {
-
+                                        if (isImage(file.file_path)) {
                                             return (
                                                 <img
                                                     key={index}
@@ -134,11 +134,9 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                                     className="rounded-lg cursor-pointer object-cover h-28 w-full hover:scale-105 transition"
                                                 />
                                             );
-
                                         }
 
                                         return (
-
                                             <a
                                                 key={index}
                                                 href={url}
@@ -148,67 +146,50 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                                 <Link2 size={16} />
                                                 Open File
                                             </a>
-
                                         );
 
                                     })}
 
                                 </div>
-
                             </div>
-
                         )}
 
                         {/* INFO */}
-
                         <div className="grid md:grid-cols-2 gap-4">
 
                             <div className="bg-gray-50 rounded-lg p-4">
-
                                 <p className="text-xs text-gray-500 mb-1">
                                     Platform
                                 </p>
-
                                 <p className="font-medium">
                                     {task.created_by_name}
                                 </p>
-
                             </div>
 
                             <div className="bg-gray-50 rounded-lg p-4">
-
                                 <p className="text-xs text-gray-500 mb-1">
                                     Assigned Technician
                                 </p>
-
                                 <p className="font-medium">
                                     {task.assigned_to_name || "Unassigned"}
                                 </p>
-
                             </div>
 
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
-
                                 <Calendar size={16} className="text-gray-400" />
-
                                 <div>
-
                                     <p className="text-xs text-gray-500">
                                         Deadline
                                     </p>
-
                                     <p className="font-medium">
                                         {task.deadline || "No deadline"}
                                     </p>
-
                                 </div>
-
                             </div>
 
                         </div>
 
                         {/* ESTIMATION INFO */}
-
                         <div className="grid grid-cols-2 gap-4">
 
                             <div className="bg-gray-50 rounded-lg p-4">
@@ -221,20 +202,9 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 <p className="font-medium">{task.estimation_end || "-"}</p>
                             </div>
 
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500">Actual Start</p>
-                                <p className="font-medium">{task.actual_start || "-"}</p>
-                            </div>
-
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500">Actual End</p>
-                                <p className="font-medium">{task.actual_end || "-"}</p>
-                            </div>
-
                         </div>
 
                         {/* FORM UPDATE */}
-
                         {(userRole === "technician" || userRole === "admin") && (
 
                             <form onSubmit={submit} className="space-y-4 border-t pt-4">
@@ -243,86 +213,63 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                     Update Task
                                 </h3>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-4">
 
-                                    <input
-                                        type="date"
-                                        value={data.estimation_start}
-                                        onChange={e => setData("estimation_start", e.target.value)}
-                                        className="border rounded-lg p-2 text-sm"
-                                    />
+                                    <div className="flex flex-col">
+                                        <label className="text-xs text-gray-500 mb-1">
+                                            Estimation Start
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={data.estimation_start}
+                                            onChange={e => setData("estimation_start", e.target.value)}
+                                            className="border rounded-lg p-2 text-sm"
+                                        />
+                                    </div>
 
-                                    <input
-                                        type="date"
-                                        value={data.estimation_end}
-                                        onChange={e => setData("estimation_end", e.target.value)}
-                                        className="border rounded-lg p-2 text-sm"
-                                    />
-
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-
-                                    <input
-                                        type="date"
-                                        value={data.actual_start}
-                                        onChange={e => setData("actual_start", e.target.value)}
-                                        className="border rounded-lg p-2 text-sm"
-                                    />
-
-                                    <input
-                                        type="date"
-                                        value={data.actual_end}
-                                        onChange={e => setData("actual_end", e.target.value)}
-                                        className="border rounded-lg p-2 text-sm"
-                                    />
+                                    <div className="flex flex-col">
+                                        <label className="text-xs text-gray-500 mb-1">
+                                            Estimation End
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={data.estimation_end}
+                                            onChange={e => setData("estimation_end", e.target.value)}
+                                            className="border rounded-lg p-2 text-sm"
+                                        />
+                                    </div>
 
                                 </div>
 
                                 {/* ASSIGN TECHNICIAN */}
-<div>
+                                <div>
 
-    <label className="text-xs text-gray-500">
-        Assign Technician
-    </label>
+                                    <label className="text-xs text-gray-500">
+                                        Assign Technician
+                                    </label>
 
-    <select
-        value={data.assigned_to}
-        onChange={e => setData("assigned_to", e.target.value)}
-        className="mt-1 w-full border rounded-lg p-2 text-sm"
-    >
+                                    <select
+                                        value={data.assigned_to}
+                                        onChange={e => setData("assigned_to", e.target.value)}
+                                        className="mt-1 w-full border rounded-lg p-2 text-sm"
+                                    >
 
-        <option value="">
-            -- Unassigned --
-        </option>
+                                        <option value="">
+                                            -- Unassigned --
+                                        </option>
 
-        {users && users.length > 0 ? (
+                                        {users
+                                            .filter(u => u.role === "technician")
+                                            .map(u => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name}
+                                                </option>
+                                            ))
+                                        }
 
-            users
-                .filter(u => u.role === "technician")
-                .map(u => {
+                                    </select>
 
-                    console.log("TECHNICIAN:", u); // debug console
-
-                    return (
-                        <option key={u.id} value={u.id}>
-                            {u.name}
-                        </option>
-                    )
-
-                })
-
-        ) : (
-
-            <option disabled>
-                No technician found
-            </option>
-
-        )}
-
-    </select>
-
-</div>
+                                </div>
 
                                 <div className="flex justify-end">
 
@@ -347,23 +294,17 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
             </div>
 
             {/* IMAGE PREVIEW */}
-
             {preview && (
-
                 <div
                     className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]"
                     onClick={() => setPreview(null)}
                 >
-
                     <img
                         src={preview}
                         className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-xl"
                     />
-
                 </div>
-
             )}
-
         </>
     );
 }

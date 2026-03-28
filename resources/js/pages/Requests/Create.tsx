@@ -1,21 +1,50 @@
 import { Head, useForm } from "@inertiajs/react"
 import AppLayout from "@/layouts/app-layout"
 import { BreadcrumbItem } from "@/types/navigation"
+import { useState } from "react"
 
 export default function Create() {
+
     const { data, setData, post, processing, errors } = useForm({
         title: "",
         description: "",
         related_url: "",
         urgency: "low",
         deadline: "",
-        attachment: ""
+        attachments: [] as File[] // 🔥 FIX: array
     })
+
+    const [previews, setPreviews] = useState<string[]>([])
+
+    // 🔥 HANDLE MULTIPLE FILE
+    const handleFileChange = (e: any) => {
+
+        const files = Array.from(e.target.files)
+
+        // set ke form
+        setData("attachments", files)
+
+        // preview hanya gambar
+        const imagePreview = files
+            .filter((file: any) => file.type.startsWith("image/"))
+            .map((file: any) => URL.createObjectURL(file))
+
+        setPreviews(imagePreview)
+    }
+
+    // 🔥 REMOVE FILE
+    const removeFile = (index: number) => {
+        const newFiles = data.attachments.filter((_, i) => i !== index)
+        const newPreviews = previews.filter((_, i) => i !== index)
+
+        setData("attachments", newFiles)
+        setPreviews(newPreviews)
+    }
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault()
         post("/requests", {
-            forceFormData: true // supaya file bisa dikirim
+            forceFormData: true
         })
     }
 
@@ -40,7 +69,8 @@ export default function Create() {
                         </p>
                     </div>
 
-                    <form onSubmit={submit} className="space-y-6" encType="multipart/form-data">
+                    <form onSubmit={submit} className="space-y-6">
+
                         {/* TITLE */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">Title</label>
@@ -102,16 +132,47 @@ export default function Create() {
                                 />
                             </div>
 
-                            {/* ATTACHMENT */}
+                            {/* 🔥 MULTIPLE ATTACHMENT */}
                             <div>
-                                <label className="text-sm font-medium text-gray-700">Attachment</label>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Attachments
+                                </label>
+
                                 <input
                                     type="file"
-                                    onChange={e => setData("attachment", e.target.files?.[0] ?? null)}
+                                    multiple
+                                    onChange={handleFileChange}
                                     className="mt-2 w-full border rounded-lg p-3"
                                 />
                             </div>
+
                         </div>
+
+                        {/* 🔥 PREVIEW */}
+                        {previews.length > 0 && (
+                            <div className="grid grid-cols-3 gap-3">
+
+                                {previews.map((src, index) => (
+                                    <div key={index} className="relative">
+
+                                        <img
+                                            src={src}
+                                            className="h-24 w-full object-cover rounded-lg"
+                                        />
+
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(index)}
+                                            className="absolute top-1 right-1 bg-black/60 text-white text-xs px-1 rounded"
+                                        >
+                                            ✕
+                                        </button>
+
+                                    </div>
+                                ))}
+
+                            </div>
+                        )}
 
                         {/* BUTTON */}
                         <div className="flex justify-end pt-4">
@@ -123,6 +184,7 @@ export default function Create() {
                                 {processing ? "Creating..." : "Create Request"}
                             </button>
                         </div>
+
                     </form>
                 </div>
             </div>

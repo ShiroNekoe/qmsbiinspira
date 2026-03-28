@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RevisionRequest;
+use App\Models\RevisionAttachment;
 use App\Models\RevisionLog;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,38 +13,43 @@ use App\Services\WhatsappService;
 
 class RevisionRequestController extends Controller
 {
-
-
-
+    // =========================
+    // INDEX
+    // =========================
     public function index()
     {
-        $tasks = RevisionRequest::with(['creator:id,name', 'assignee:id,name'])
-            ->latest()
-            ->get()
-            ->map(function ($task) {
-                return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'description' => $task->description,
-                    'status' => $task->status,
-                    'urgency' => $task->urgency,
-                    'deadline' => $task->deadline,
-                    'related_url' => $task->related_url,
-                    'attachment' => $task->attachment,
+        $tasks = RevisionRequest::with([
+            'creator:id,name',
+            'assignee:id,name',
+            'attachments'
+        ])
+        ->latest()
+        ->get()
+        ->map(function ($task) {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'status' => $task->status,
+                'urgency' => $task->urgency,
+                'deadline' => $task->deadline,
+                'related_url' => $task->related_url,
 
-                    'created_by_name' => $task->creator?->name,
+                // ✅ MULTI ATTACHMENT
+                'attachments' => $task->attachments->map(fn($a) => [
+                    'file_path' => $a->file_path
+                ]),
 
-                    'assigned_to' => $task->assigned_to,
-                    'assigned_to_name' => $task->assignee?->name,
+                'created_by_name' => $task->creator?->name,
 
-                    'estimation_start' => $task->estimation_start,
-                    'estimation_end' => $task->estimation_end,
+                'assigned_to' => $task->assigned_to,
+                'assigned_to_name' => $task->assignee?->name,
 
-                    'actual_start' => $task->actual_start,
-                    'actual_end' => $task->actual_end,
-                ];
-            })
-            ->groupBy('status');
+                'estimation_start' => $task->estimation_start,
+                'estimation_end' => $task->estimation_end,
+            ];
+        })
+        ->groupBy('status');
 
         $users = User::select('id', 'name', 'role')
             ->where('role', 'technician')
@@ -57,6 +63,9 @@ class RevisionRequestController extends Controller
         ]);
     }
 
+    // =========================
+    // CREATE (WAJIB ADA)
+    // =========================
     public function create()
     {
         if (auth()->user()->role !== 'unit') {
@@ -66,7 +75,9 @@ class RevisionRequestController extends Controller
         return Inertia::render('Requests/Create');
     }
 
-
+    // =========================
+    // STORE (MULTIPLE UPLOAD)
+    // =========================
     public function store(Request $request)
     {
         if (auth()->user()->role !== 'unit') {
@@ -79,7 +90,10 @@ class RevisionRequestController extends Controller
             'related_url' => 'nullable|string',
             'urgency' => 'required|in:high,medium,low',
             'deadline' => 'nullable|date',
-            'attachment' => 'nullable|file|mimes:jpg,png,jpeg,pdf|max:5120',
+
+            // ✅ MULTI FILE
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:jpg,png,jpeg,pdf|max:5120',
         ]);
 
         $task = RevisionRequest::create([
@@ -90,26 +104,37 @@ class RevisionRequestController extends Controller
             'deadline' => $validated['deadline'] ?? null,
             'status' => 'request',
             'created_by' => auth()->id(),
-            'attachment' => $request->file('attachment')
-                ? $request->file('attachment')->store('revision_requests', 'public')
-                : null,
         ]);
+
+        // ✅ SIMPAN FILE
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+
+                $path = $file->store('attachments', 'public');
+
+                $task->attachments()->create([
+                    'file_path' => $path
+                ]);
+            }
+        }
 
         return redirect()
             ->route('requests.index')
             ->with('success', 'Request created successfully');
     }
 
+    // =========================
+    // UPDATE STATUS
+    // =========================
     public function updateStatus(Request $request, $id)
     {
         $user = auth()->user();
 
         if (!in_array($user->role, ['technician', 'admin'])) {
-            abort(403, "Only technicians or admin can update requests");
+            abort(403);
         }
 
         $task = RevisionRequest::findOrFail($id);
-
         $oldStatus = $task->status;
 
         $validated = $request->validate([
@@ -117,21 +142,11 @@ class RevisionRequestController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'estimation_start' => 'nullable|date',
             'estimation_end' => 'nullable|date',
-            'actual_start' => 'nullable|date',
-            'actual_end' => 'nullable|date',
         ]);
 
-        $updateData = array_filter([
-            'status' => $validated['status'] ?? null,
-            'assigned_to' => $validated['assigned_to'] ?? null,
-            'estimation_start' => $validated['estimation_start'] ?? null,
-            'estimation_end' => $validated['estimation_end'] ?? null,
-            'actual_start' => $validated['actual_start'] ?? null,
-            'actual_end' => $validated['actual_end'] ?? null,
-        ], fn($value) => !is_null($value));
+        $task->update($validated);
 
-        $task->update($updateData);
-
+        // 🔥 LOG + NOTIF
         if ($oldStatus !== $task->status) {
 
             RevisionLog::create([
@@ -149,38 +164,42 @@ class RevisionRequestController extends Controller
                 // EMAIL
                 $unitUser->notify(new TaskStatusUpdated($task));
 
-                // WHATSAPP
+                // WA
                 if ($unitUser->phone) {
-
                     $message =
                         "Update Request QMS\n\n" .
                         "Judul: {$task->title}\n" .
                         "Status Baru: {$task->status}\n\n" .
-                        "Silakan cek dashboard QMS.";
+                        "Silakan cek dashboard QMS🙏.";
 
                     WhatsappService::send($unitUser->phone, $message);
                 }
             }
         }
 
-        return back()->with('success', 'Request updated successfully');
+        return back()->with('success', 'Request updated');
     }
 
+    // =========================
+    // SHOW
+    // =========================
     public function show($id)
     {
-        $task = RevisionRequest::with(['creator', 'assignee'])->findOrFail($id);
+        $task = RevisionRequest::with(['creator', 'assignee', 'attachments'])
+            ->findOrFail($id);
 
         return Inertia::render('Requests/Show', [
             'task' => $task
         ]);
     }
 
+    // =========================
+    // DELETE
+    // =========================
     public function destroy($id)
     {
-        $user = auth()->user();
-
-        if ($user->role !== 'admin') {
-            abort(403, 'Only admin can delete request');
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
         }
 
         $task = RevisionRequest::findOrFail($id);
@@ -188,4 +207,4 @@ class RevisionRequestController extends Controller
 
         return back()->with('success', 'Request deleted');
     }
-}
+}   

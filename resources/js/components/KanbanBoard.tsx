@@ -97,6 +97,23 @@ export default function KanbanBoard({
     const canDrag = user_role === "admin" || user_role === "technician"
 
     /* =========================
+       OVERDUE CHECK
+    ========================= */
+
+    const isOverdue = (task: Task) => {
+        if (!task.deadline) return false
+
+        const today = new Date()
+        const deadline = new Date(task.deadline)
+
+        return (
+            deadline < today &&
+            task.status !== "complete" &&
+            task.status !== "in_review" 
+        )
+    }
+
+    /* =========================
        DRAG DROP
     ========================= */
 
@@ -112,9 +129,7 @@ export default function KanbanBoard({
         ) return
 
         if (!canDrag) {
-
             showToast("Hanya admin atau technician yang bisa memindahkan task!")
-
             return
         }
 
@@ -141,6 +156,8 @@ export default function KanbanBoard({
             startTasks.splice(source.index, 1)
             finishTasks.splice(destination.index, 0, task)
 
+            task.status = finishColumn
+
             setBoard({
                 ...board,
                 [startColumn]: startTasks,
@@ -149,17 +166,10 @@ export default function KanbanBoard({
 
         }
 
-        /* UPDATE BACKEND */
-
         router.patch(
             `/requests/${draggableId}/status`,
-            {
-                status: finishColumn
-            },
-            {
-                preserveScroll: true,
-                preserveState: true
-            }
+            { status: finishColumn },
+            { preserveScroll: true, preserveState: true }
         )
     }
 
@@ -167,45 +177,57 @@ export default function KanbanBoard({
        TASK CARD
     ========================= */
 
-    const renderTaskCard = (task: Task) => (
+    const renderTaskCard = (task: Task) => {
 
-        <div
-            key={task.id}
-            onClick={() => openTask(task)}
-            className="bg-white border rounded-lg p-3 mb-3 cursor-pointer hover:shadow-md transition-all duration-200 break-words"
-        >
+        const overdue = isOverdue(task)
 
-            <p className="font-medium text-sm mb-1">
-                {task.title}
-            </p>
+        return (
+            <div
+                key={task.id}
+                onClick={() => openTask(task)}
+                className={`
+                    relative bg-white border rounded-lg p-3 mb-3 cursor-pointer 
+                    hover:shadow-md transition-all duration-200 break-words
+                   ${overdue ? "border-red-300 bg-red-50" : ""}
+                `}
+            >
 
-            <p className="text-xs text-gray-400 mb-1 truncate">
-                Platform: {task.created_by_name}
-            </p>
+                {/* 🚨 WARNING ICON */}
+                {overdue && (
+                    <div className="absolute top-1 right-2 text-red-400 text-sm font-semibold">
+                        !
+                    </div>
+                )}
 
-            {task.deadline && (
-
-                <p className="text-xs text-gray-400 mb-2 truncate">
-                    Deadline: {task.deadline}
+                <p className="font-medium text-sm mb-1">
+                    {task.title}
                 </p>
 
-            )}
-
-            <div className="flex justify-between items-center">
-
-                <p className="text-xs text-gray-500 truncate">
-                    {task.assigned_to_name || "Unassigned"}
+                <p className="text-xs text-gray-400 mb-1 truncate">
+                    Platform: {task.created_by_name}
                 </p>
 
-                <span className={`text-xs px-2 py-1 rounded ${urgencyColor(task.urgency)}`}>
-                    {task.urgency}
-                </span>
+                {task.deadline && (
+                    <p className={`text-xs mb-2 truncate ${overdue ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                        Deadline: {task.deadline}
+                    </p>
+                )}
+
+                <div className="flex justify-between items-center">
+
+                    <p className="text-xs text-gray-500 truncate">
+                        {task.assigned_to_name || "Unassigned"}
+                    </p>
+
+                    <span className={`text-xs px-2 py-1 rounded ${urgencyColor(task.urgency)}`}>
+                        {task.urgency}
+                    </span>
+
+                </div>
 
             </div>
-
-        </div>
-
-    )
+        )
+    }
 
     /* =========================
        RENDER
@@ -213,17 +235,12 @@ export default function KanbanBoard({
 
     return (
         <>
-
             <DragDropContext onDragEnd={onDragEnd}>
-
                 <div className="grid grid-cols-5 gap-4">
 
                     {columns.map((col) => (
-
                         <Droppable droppableId={col} key={col}>
-
                             {(provided) => (
-
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
@@ -235,71 +252,65 @@ export default function KanbanBoard({
                                     </h2>
 
                                     {board[col]?.map((task, index) => (
-
                                         canDrag ? (
-
                                             <Draggable
                                                 key={task.id}
                                                 draggableId={task.id.toString()}
                                                 index={index}
                                             >
-
                                                 {(provided) => (
-
                                                     <div
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
                                                         {...provided.dragHandleProps}
                                                     >
-
                                                         {renderTaskCard(task)}
-
                                                     </div>
-
                                                 )}
-
                                             </Draggable>
-
                                         ) : (
-
                                             renderTaskCard(task)
-
                                         )
-
                                     ))}
 
                                     {provided.placeholder}
 
                                 </div>
-
                             )}
-
                         </Droppable>
-
                     ))}
 
                 </div>
-
             </DragDropContext>
 
             {/* MODAL */}
-
             <TaskModal
                 task={selectedTask}
                 users={users}
                 onClose={closeTask}
             />
 
+            {/* ANIMATION */}
             <style>{`
                 @keyframes slideIn {
                     0% { transform: translateY(-20px); opacity: 0; }
                     100% { transform: translateY(0); opacity: 1; }
                 }
+
                 .animate-slideIn {
                     animation: slideIn 0.3s ease forwards;
                 }
-            `}</style>
 
+                @keyframes dangerGlow {
+                    0% { box-shadow: 0 0 5px rgba(239,68,68,0.5); }
+                    50% { box-shadow: 0 0 20px rgba(239,68,68,1); }
+                    100% { box-shadow: 0 0 5px rgba(239,68,68,0.5); }
+                }
+
+                .animate-danger {
+                    animation: dangerGlow 1s infinite;
+                }
+            `}</style>
         </>
     )
 }

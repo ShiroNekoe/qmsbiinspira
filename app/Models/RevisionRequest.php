@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+
 class RevisionRequest extends Model
 {
     use HasFactory;
@@ -57,5 +58,10 @@ class RevisionRequest extends Model
     public function assignee()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+        public function attachments()
+    {
+        return $this->hasMany(RevisionAttachment::class);
     }
 }
