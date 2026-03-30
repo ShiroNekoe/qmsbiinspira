@@ -19,7 +19,6 @@ class RevisionRequest extends Model
         'urgency',
         'deadline',
         'related_url',
-        'attachment',
         'created_by',
         'assigned_to',
         'estimation_start',
@@ -32,15 +31,6 @@ class RevisionRequest extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    // Accessor untuk attachment (url lengkap)
-    public function getAttachmentUrlAttribute(): ?string
-    {
-        if ($this->attachment) {
-            return asset('storage/' . $this->attachment);
-        }
-        return null;
     }
 
     // Scopes untuk filter status atau urgency

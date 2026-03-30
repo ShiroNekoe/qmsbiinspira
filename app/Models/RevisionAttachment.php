@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class RevisionAttachment extends Model
 {
-    protected $fillable = ['revision_request_id', 'file_path'];
+    protected $fillable = [
+        'revision_request_id',
+        'file_path'
+    ];
 
     public function request()
-{
-    return $this->belongsTo(RevisionRequest::class);
-}
+    {
+        return $this->belongsTo(RevisionRequest::class);
+    }
 }

@@ -47,7 +47,11 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(`/requests/${task.id}/status`);
+
+        patch(`/requests/${task.id}/status`, {
+            preserveScroll: true,
+            preserveState: true,
+        });
     };
 
     // ✅ MULTI ATTACHMENT (dari relation)
