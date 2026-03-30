@@ -4,10 +4,6 @@ import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 import { ClipboardList, Plus } from "lucide-react"
 
-/* =========================
-   TYPES
-========================= */
-
 type User = {
     id: number
     name: string
@@ -25,10 +21,6 @@ type Props = {
     tasks: Record<string, Task[]>
     users: User[]
 }
-
-/* =========================
-   COMPONENT
-========================= */
 
 export default function Index({ tasks, users }: Props) {
 
@@ -48,52 +40,55 @@ export default function Index({ tasks, users }: Props) {
 
             <div className="p-6 space-y-6">
 
-                {/* Header */}
+                {/* Page Header */}
                 <div className="flex items-center justify-between">
-
                     <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-xl bg-blue-500/10">
-                            <ClipboardList className="w-6 h-6 text-blue-600" />
+                        <div className="p-2.5 rounded-xl bg-blue-500/10">
+                            <ClipboardList className="w-5 h-5 text-blue-600" />
                         </div>
-
                         <div>
-                            <h1 className="text-2xl font-bold">
+                            <h1 className="text-xl font-bold text-gray-800 leading-tight">
                                 Queue Management System
                             </h1>
-
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs text-gray-400 mt-0.5">
                                 Manage revision requests from all units in one board
                             </p>
                         </div>
                     </div>
-
-                    {userRole === "unit" && (
-                        <Link
-                            href="/requests/create"
-                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                        >
-                            <Plus size={18} />
-                            Create Request
-                        </Link>
-                    )}
-
                 </div>
 
-                {/* Board */}
-                <div className="bg-white rounded-xl shadow-sm border">
+                {/* Board Container */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
 
-                    <div className="p-4 border-b font-semibold text-gray-700">
-                        Request Workflow
+                    {/* Board Header */}
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 className="font-semibold text-gray-800 text-sm">
+                                Request Workflow
+                            </h2>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                                Drag cards to update status
+                            </p>
+                        </div>
+
+                        {userRole === "unit" && (
+                            <Link
+                                href="/requests/create"
+                                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150"
+                            >
+                                <Plus size={16} />
+                                Create Request
+                            </Link>
+                        )}
                     </div>
 
-                    <div className="p-4">
-
+                    {/* Board Content */}
+                    <div className="p-5">
                         <KanbanBoard
                             tasks={tasks}
                             users={users}
                             user_role={userRole}
                         />
-
                     </div>
 
                 </div>
