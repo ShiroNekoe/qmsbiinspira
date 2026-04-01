@@ -1,4 +1,4 @@
-import { X, Calendar, Link2 } from "lucide-react";
+import { X, Calendar, Link2, ShieldAlert, Building2, Hammer } from "lucide-react";
 import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
 
@@ -89,10 +89,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-600">
                                     {task.status}
                                 </span>
-
-                                <span className={`px-2 py-1 text-xs rounded ${urgencyColor[task.urgency] || ""}`}>
-                                    {task.urgency}
-                                </span>
                             </div>
                         </div>
 
@@ -117,7 +113,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                         </div>
 
                         {/* ATTACHMENT */}
-                            {attachments.length > 0 && (
+                        {attachments.length > 0 && (
                             <div>
                                 <p className="text-sm font-semibold text-gray-500 mb-2">
                                     Attachments
@@ -161,22 +157,28 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                         {/* INFO */}
                         <div className="grid md:grid-cols-2 gap-4">
 
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500 mb-1">
-                                    Platform
-                                </p>
-                                <p className="font-medium">
-                                    {task.created_by_name}
-                                </p>
+                            <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
+                                <Building2 size={16} className="text-gray-400" />
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">
+                                        Platform
+                                    </p>
+                                    <p className="font-medium">
+                                        {task.created_by_name}
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500 mb-1">
-                                    Assigned Technician
-                                </p>
-                                <p className="font-medium">
-                                    {task.assigned_to_name || "Unassigned"}
-                                </p>
+                            <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
+                                <Hammer size={16} className="text-gray-400" />
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">
+                                        Assigned Technician
+                                    </p>
+                                    <p className="font-medium">
+                                        {task.assigned_to_name || "Unassigned"}
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
@@ -191,6 +193,18 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 </div>
                             </div>
 
+                            <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
+                                <ShieldAlert size={16} className="text-gray-400" />
+                                <div>
+                                    <p className="text-xs text-gray-500">
+                                        Urgency
+                                    </p>
+                                    <p className="font-medium">
+                                        {task.urgency || "No deadline"}
+                                    </p>
+                                </div>
+                            </div>
+
                         </div>
 
                         {/* ESTIMATION INFO */}
@@ -198,15 +212,25 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                             <div className="bg-gray-50 rounded-lg p-4">
                                 <p className="text-xs text-gray-500">Estimation Start</p>
-                                <p className="font-medium">{task.estimation_start || "-"}</p>
+                                <p className="font-medium">
+                                    {task.estimation_start
+                                        ? task.estimation_start.split(" ")[0].split("-").reverse().join("-")
+                                        : "-"}
+                                </p>
                             </div>
 
                             <div className="bg-gray-50 rounded-lg p-4">
                                 <p className="text-xs text-gray-500">Estimation End</p>
-                                <p className="font-medium">{task.estimation_end || "-"}</p>
+                                <p className="font-medium">
+                                    {task.estimation_end
+                                        ? task.estimation_end.split(" ")[0].split("-").reverse().join("-")
+                                        : "-"}
+                                </p>
                             </div>
 
                         </div>
+
+
 
                         {/* FORM UPDATE */}
                         {(userRole === "technician" || userRole === "admin") && (

@@ -18,7 +18,6 @@ export default function Create({ users }: { users: User[] }) {
         urgency: "low",
         deadline: "",
         attachments: [] as File[],
-        assigned_to: null as number | null // 🔥 FIX TYPE
     })
 
     const [previews, setPreviews] = useState<string[]>([])
@@ -206,51 +205,7 @@ export default function Create({ users }: { users: User[] }) {
                 </div>
 
                 {/* RIGHT PANEL */}
-                <div className="bg-white shadow-lg rounded-2xl border p-5 h-fit w-full max-w-xs">
 
-                    <h2 className="text-base font-semibold mb-3">
-                        Assign Technician
-                    </h2>
-
-                    <div className="space-y-2">
-
-                        {users.map(user => (
-                            <div
-                                key={user.id}
-                                onClick={() => setData("assigned_to", user.id)}
-                                className={`p-3 border rounded-lg cursor-pointer 
-                                ${data.assigned_to === user.id
-                                        ? "border-blue-500 bg-blue-50"
-                                        : "hover:bg-gray-50"}`}
-                            >
-
-                                <div className="flex justify-between items-center">
-
-                                    <div>
-                                        <p className="font-medium">{user.name}</p>
-
-                                        <p className={`text-xs ${user.workload > 5
-                                            ? "text-red-500"
-                                            : user.workload > 2
-                                                ? "text-yellow-500"
-                                                : "text-green-500"
-                                            }`}>
-                                            Total Pekerjaan: {user.workload} task
-                                        </p>
-                                    </div>
-
-                                    {data.assigned_to === user.id && (
-                                        <span className="text-blue-500">✔</span>
-                                    )}
-
-                                </div>
-
-                            </div>
-                        ))}
-
-                    </div>
-
-                </div>
 
             </div>
         </AppLayout>

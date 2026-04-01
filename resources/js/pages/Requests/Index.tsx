@@ -74,7 +74,7 @@ export default function Index({ tasks, users }: Props) {
                         {userRole === "unit" && (
                             <Link
                                 href="/requests/create"
-                                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150"
+                                className="flex items-center gap-1.5 bg-gray-400 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150"
                             >
                                 <Plus size={16} />
                                 Create Request
