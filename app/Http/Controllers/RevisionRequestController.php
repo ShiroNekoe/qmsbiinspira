@@ -111,7 +111,7 @@ class RevisionRequestController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'related_url' => 'nullable|string',
+            'related_url' => 'nullable|url',
             'urgency' => 'required|in:high,medium,low',
             'deadline' => 'nullable|date',
 
@@ -119,6 +119,7 @@ class RevisionRequestController extends Controller
 
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:jpg,png,jpeg,pdf',
+
         ]);
 
         $task = RevisionRequest::create([
@@ -182,6 +183,14 @@ class RevisionRequestController extends Controller
             'estimation_start' => 'nullable|date',
             'estimation_end' => 'nullable|date',
         ]);
+
+        if (in_array($request->status, ['todo', 'in_progress'])) {
+            $request->validate([
+                'assigned_to' => 'required|exists:users,id',
+                'estimation_start' => 'required|date',
+                'estimation_end' => 'required|date|after_or_equal:estimation_start',
+            ]);
+        }
 
         $task->update($validated);
 

@@ -206,49 +206,93 @@ export default function KanbanBoard({
        DRAG DROP
     ========================= */
 
-    const onDragEnd = (result: DropResult) => {
-        const { source, destination, draggableId } = result
+const onDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result
 
-        if (!destination) return
-        if (
-            source.droppableId === destination.droppableId &&
-            source.index === destination.index
-        ) return
+    if (!destination) return
+    if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+    ) return
 
-        if (!canDrag) {
-            showToast("Hanya admin atau technician yang bisa memindahkan task!")
-            return
-        }
-
-        const startColumn = source.droppableId as keyof Board
-        const finishColumn = destination.droppableId as keyof Board
-
-        const startTasks = Array.from(board[startColumn])
-        const finishTasks = Array.from(board[finishColumn])
-
-        const task = startTasks[source.index]
-
-        if (startColumn === finishColumn) {
-            startTasks.splice(source.index, 1)
-            startTasks.splice(destination.index, 0, task)
-            setBoard({ ...board, [startColumn]: startTasks })
-        } else {
-            startTasks.splice(source.index, 1)
-            finishTasks.splice(destination.index, 0, task)
-            task.status = finishColumn
-            setBoard({
-                ...board,
-                [startColumn]: startTasks,
-                [finishColumn]: finishTasks,
-            })
-        }
-
-        router.patch(
-            `/requests/${draggableId}/status`,
-            { status: finishColumn },
-            { preserveScroll: true, preserveState: true }
-        )
+    if (!canDrag) {
+        showToast("Hanya admin atau technician yang bisa memindahkan task!")
+        return
     }
+
+    const startColumn = source.droppableId as keyof Board
+    const finishColumn = destination.droppableId as keyof Board
+
+    const startTasks = Array.from(board[startColumn])
+    const finishTasks = Array.from(board[finishColumn])
+
+    const task = startTasks[source.index]
+
+    // 🔥 VALIDASI DATA (TEKNISI + ESTIMASI)
+    if (
+        (finishColumn === "todo" || finishColumn === "in_progress") &&
+        (!task.assigned_to || !task.estimation_start || !task.estimation_end)
+    ) {
+        showToast("Isi teknisi & estimasi waktu sebelum memindahkan")
+        return
+    }
+
+    // 🔥 VALIDASI FLOW (ANTI LONCAT)
+    if (
+        finishColumn === "in_review" &&
+        startColumn !== "in_progress"
+    ) {
+        showToast("Harus dari 'Sedang Dikerjakan' dulu 🔄")
+        return
+    }
+
+    if (
+        finishColumn === "complete" &&
+        startColumn !== "in_review"
+    ) {
+        showToast("Harus lewat tahap review dulu ✅")
+        return
+    }
+
+    // =========================
+    // UPDATE UI
+    // =========================
+    if (startColumn === finishColumn) {
+        startTasks.splice(source.index, 1)
+        startTasks.splice(destination.index, 0, task)
+        setBoard({ ...board, [startColumn]: startTasks })
+    } else {
+        startTasks.splice(source.index, 1)
+        finishTasks.splice(destination.index, 0, task)
+        task.status = finishColumn
+
+        setBoard({
+            ...board,
+            [startColumn]: startTasks,
+            [finishColumn]: finishTasks,
+        })
+    }
+
+    // =========================
+    // API CALL
+    // =========================
+    router.patch(
+        `/requests/${draggableId}/status`,
+        {
+            status: finishColumn,
+            assigned_to: task.assigned_to,
+            estimation_start: task.estimation_start,
+            estimation_end: task.estimation_end,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                showToast("Gagal update 🚨")
+            },
+        }
+    )
+}
 
     /* =========================
        TASK CARD

@@ -120,7 +120,7 @@ export default function Create({ users }: { users: User[] }) {
                             <div>
                                 <label className="text-sm font-medium">Related URL</label>
                                 <input
-                                    type="text"
+                                    type="url"
                                     value={data.related_url}
                                     onChange={e => setData("related_url", e.target.value)}
                                     className="mt-2 w-full border rounded-lg p-3"

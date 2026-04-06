@@ -3,6 +3,7 @@ import { Head, Link, usePage } from "@inertiajs/react"
 import AppLayout from "@/layouts/app-layout"
 import type { BreadcrumbItem } from "@/types"
 import { ClipboardList, Plus } from "lucide-react"
+import { useEffect, useState } from "react"
 
 type User = {
     id: number
@@ -22,10 +23,52 @@ type Props = {
     users: User[]
 }
 
+type Toast = {
+    id: number
+    text: string
+    type: "success" | "error"
+}
+
 export default function Index({ tasks, users }: Props) {
 
-    const { auth } = usePage().props as any
+    const { auth, errors, flash } = usePage().props as any
     const userRole = auth.user.role
+
+    const [toasts, setToasts] = useState<Toast[]>([])
+
+    // 🔥 helper add toast
+    const addToast = (text: string, type: "success" | "error" = "success") => {
+        const id = Date.now()
+        setToasts(prev => [...prev, { id, text, type }])
+
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id))
+        }, 3000)
+    }
+
+    // =========================
+    // ERROR HANDLER
+    // =========================
+    useEffect(() => {
+        if (errors && Object.keys(errors).length > 0) {
+            Object.values(errors).forEach((err: any) => {
+                addToast(err, "error")
+            })
+        }
+    }, [errors])
+
+    // =========================
+    // SUCCESS HANDLER
+    // =========================
+    useEffect(() => {
+        if (flash?.success) {
+            const msg = typeof flash.success === "string"
+                ? flash.success
+                : flash.success.message
+
+            addToast(msg, "success")
+        }
+    }, [flash])
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -37,6 +80,38 @@ export default function Index({ tasks, users }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="QMS Requests" />
+
+            {/* 🔥 TOAST CONTAINER */}
+            <div className="fixed top-5 right-5 z-50 space-y-2">
+                {toasts.map((toast) => (
+                    <div
+                        key={toast.id}
+                        className="px-4 py-2 rounded-lg shadow-lg text-white
+                                   bg-red-500
+                                   transform transition-all duration-300
+                                   translate-x-0 opacity-100
+                                   animate-[slideIn_0.3s_ease]"
+                    >
+                        {toast.text}
+                    </div>
+                ))}
+            </div>
+
+            {/* 🔥 INLINE ANIMATION STYLE */}
+            <style>
+                {`
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateX(100%);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                `}
+            </style>
 
             <div className="p-6 space-y-6">
 
