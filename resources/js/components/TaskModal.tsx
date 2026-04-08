@@ -1,6 +1,11 @@
+"use client"
+
 import { X, Calendar, Link2, ShieldAlert, Building2, Hammer } from "lucide-react";
 import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
+import { format } from "date-fns";
+import { DayPicker, DateRange } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 
 type User = {
     id: number;
@@ -19,14 +24,8 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
     if (!task) return null;
 
     const [preview, setPreview] = useState<string | null>(null);
+    const [openCalendar, setOpenCalendar] = useState(false);
 
-    const urgencyColor: Record<string, string> = {
-        high: "bg-red-100 text-red-600",
-        medium: "bg-yellow-100 text-yellow-600",
-        low: "bg-green-100 text-green-600",
-    };
-
-    // ✅ progress mapping
     const progressMap: Record<string, number> = {
         request: 10,
         todo: 25,
@@ -36,12 +35,13 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
     };
 
     const { auth }: any = usePage().props;
-    const userRole = auth.user.role;
+    const userRoles = auth?.user?.roles || [];
+    const userRole = userRoles[0] ?? null;
 
     const { data, setData, patch, processing } = useForm({
         status: task.status || "request",
-        estimation_start: task.estimation_start || "",
-        estimation_end: task.estimation_end || "",
+        estimation_start: task.estimation_start || null,
+        estimation_end: task.estimation_end || null,
         assigned_to: task.assigned_to || "",
     });
 
@@ -54,11 +54,20 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
         });
     };
 
-    // ✅ MULTI ATTACHMENT (dari relation)
     const attachments = task.attachments || [];
 
     const isImage = (file: string) => {
         return file.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    };
+
+    const parseDate = (date: string | null) => {
+        if (!date) return undefined;
+        return new Date(date.split(" ")[0]);
+    };
+
+    const range: DateRange = {
+        from: parseDate(data.estimation_start),
+        to: parseDate(data.estimation_end),
     };
 
     return (
@@ -67,7 +76,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                 <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl overflow-y-auto max-h-[90vh] flex flex-col">
 
-                    {/* ✅ PROGRESS BAR (NEW, di atas banget) */}
+                    {/* PROGRESS */}
                     <div className="w-full bg-gray-200 h-2">
                         <div
                             className="h-2 bg-blue-500 transition-all duration-500"
@@ -81,10 +90,8 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
                     {/* HEADER */}
                     <div className="flex justify-between items-center border-b p-5">
-
                         <div>
                             <h2 className="text-xl font-bold">{task.title}</h2>
-
                             <div className="flex gap-2 mt-2">
                                 <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-600">
                                     {task.status}
@@ -95,7 +102,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                         <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded">
                             <X size={18} />
                         </button>
-
                     </div>
 
                     {/* BODY */}
@@ -106,7 +112,6 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                             <p className="text-sm font-semibold text-gray-500 mb-2">
                                 Description
                             </p>
-
                             <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700">
                                 {task.description || "No description"}
                             </div>
@@ -118,11 +123,8 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                 <p className="text-sm font-semibold text-gray-500 mb-2">
                                     Attachments
                                 </p>
-
                                 <div className="grid grid-cols-3 gap-3">
-
                                     {attachments.map((file: any, index: number) => {
-
                                         const url = `/storage/${file.file_path}`;
 
                                         if (isImage(file.file_path)) {
@@ -147,9 +149,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                                 Open File
                                             </a>
                                         );
-
                                     })}
-
                                 </div>
                             </div>
                         )}
@@ -160,21 +160,15 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
                                 <Building2 size={16} className="text-gray-400" />
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">
-                                        Platform
-                                    </p>
-                                    <p className="font-medium">
-                                        {task.created_by_name}
-                                    </p>
+                                    <p className="text-xs text-gray-500 mb-1">Platform</p>
+                                    <p className="font-medium">{task.created_by_name}</p>
                                 </div>
                             </div>
 
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
                                 <Hammer size={16} className="text-gray-400" />
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">
-                                        Assigned Technician
-                                    </p>
+                                    <p className="text-xs text-gray-500 mb-1">Assigned Technician</p>
                                     <p className="font-medium">
                                         {task.assigned_to_name || "Unassigned"}
                                     </p>
@@ -184,9 +178,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
                                 <Calendar size={16} className="text-gray-400" />
                                 <div>
-                                    <p className="text-xs text-gray-500">
-                                        Deadline
-                                    </p>
+                                    <p className="text-xs text-gray-500">Deadline</p>
                                     <p className="font-medium">
                                         {task.deadline || "No deadline"}
                                     </p>
@@ -196,82 +188,107 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                             <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
                                 <ShieldAlert size={16} className="text-gray-400" />
                                 <div>
-                                    <p className="text-xs text-gray-500">
-                                        Urgency
-                                    </p>
+                                    <p className="text-xs text-gray-500">Urgency</p>
                                     <p className="font-medium">
-                                        {task.urgency || "No deadline"}
+                                        {task.urgency || "-"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 rounded-lg p-4 flex items-center gap-2">
+                                <Calendar size={16} className="text-gray-400" />
+                                <div>
+                                    <p className="text-xs text-gray-500">Estimation end</p>
+                                    <p className="font-medium">
+                                        {data.estimation_end
+                                            ? format(new Date(data.estimation_end), "dd MMM yyyy")
+                                            : "-"}
                                     </p>
                                 </div>
                             </div>
 
                         </div>
 
-                        {/* ESTIMATION INFO */}
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* 🔥 ESTIMATION (FIXED) */}
 
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500">Estimation Start</p>
-                                <p className="font-medium">
-                                    {task.estimation_start
-                                        ? task.estimation_start.split(" ")[0].split("-").reverse().join("-")
-                                        : "-"}
-                                </p>
-                            </div>
-
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <p className="text-xs text-gray-500">Estimation End</p>
-                                <p className="font-medium">
-                                    {task.estimation_end
-                                        ? task.estimation_end.split(" ")[0].split("-").reverse().join("-")
-                                        : "-"}
-                                </p>
-                            </div>
-
-                        </div>
-
-
-
-                        {/* FORM UPDATE */}
-                        {(userRole === "technician" || userRole === "admin") && (
-
+                        {/* FORM */}
+                        {(userRoles.includes("technician") || userRoles.includes("admin")) && (
                             <form onSubmit={submit} className="space-y-4 border-t pt-4">
 
                                 <h3 className="text-sm font-semibold text-gray-600">
                                     Update Task
                                 </h3>
 
+                                {/* DISPLAY */}
                                 <div className="grid grid-cols-2 gap-4">
 
-                                    <div className="flex flex-col">
-                                        <label className="text-xs text-gray-500 mb-1">
-                                            Estimation Start
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={data.estimation_start}
-                                            onChange={e => setData("estimation_start", e.target.value)}
-                                            className="border rounded-lg p-2 text-sm"
-                                        />
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <p className="text-xs text-gray-500">Estimation Start</p>
+                                        <p className="font-medium">
+                                            {data.estimation_start
+                                                ? format(new Date(data.estimation_start), "dd MMM yyyy")
+                                                : "-"}
+                                        </p>
                                     </div>
 
-                                    <div className="flex flex-col">
-                                        <label className="text-xs text-gray-500 mb-1">
-                                            Estimation End
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={data.estimation_end}
-                                            onChange={e => setData("estimation_end", e.target.value)}
-                                            className="border rounded-lg p-2 text-sm"
-                                        />
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <p className="text-xs text-gray-500">Estimation End</p>
+                                        <p className="font-medium">
+                                            {data.estimation_end
+                                                ? format(new Date(data.estimation_end), "dd MMM yyyy")
+                                                : "-"}
+                                        </p>
                                     </div>
 
                                 </div>
+                                <div className="space-y-4">
 
-                                {/* ASSIGN TECHNICIAN */}
+                                    {/* PICKER */}
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-500 mb-2">
+                                            Estimation Range
+                                        </p>
+
+                                        <button
+                                            onClick={() => setOpenCalendar(!openCalendar)}
+                                            className="w-full border rounded-lg p-3 text-left"
+                                        >
+                                            {range?.from ? (
+                                                range.to
+                                                    ? `${format(range.from, "dd MMM yyyy")} - ${format(range.to, "dd MMM yyyy")}`
+                                                    : format(range.from, "dd MMM yyyy")
+                                            ) : (
+                                                "Pick date range"
+                                            )}
+                                        </button>
+
+                                        {openCalendar && (
+                                            <div className="mt-3 border rounded-lg p-2 bg-white shadow inline-block">
+                                                <DayPicker
+                                                    mode="range"
+                                                    selected={range}
+                                                    onSelect={(r) => {
+                                                        setData({
+                                                            ...data,
+                                                            estimation_start: r?.from
+                                                                ? format(r.from, "yyyy-MM-dd")
+                                                                : null,
+                                                            estimation_end: r?.to
+                                                                ? format(r.to, "yyyy-MM-dd")
+                                                                : null,
+                                                        });
+                                                    }}
+                                                    numberOfMonths={1}
+                                                    className="text-sm"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+
+                                </div>
+
                                 <div>
-
                                     <label className="text-xs text-gray-500">
                                         Assign Technician
                                     </label>
@@ -281,26 +298,19 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                         onChange={e => setData("assigned_to", e.target.value)}
                                         className="mt-1 w-full border rounded-lg p-2 text-sm"
                                     >
-
-                                        <option value="">
-                                            -- Unassigned --
-                                        </option>
+                                        <option value="">-- Unassigned --</option>
 
                                         {users
-                                            .filter(u => u.role === "technician")
-                                            .map(u => (
+                                            .filter((u: any) => u.roles?.includes("technician"))
+                                            .map((u: any) => (
                                                 <option key={u.id} value={u.id}>
                                                     {u.name}
                                                 </option>
-                                            ))
-                                        }
-
+                                            ))}
                                     </select>
-
                                 </div>
 
                                 <div className="flex justify-end">
-
                                     <button
                                         type="submit"
                                         disabled={processing}
@@ -308,11 +318,9 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
                                     >
                                         {processing ? "Updating..." : "Update"}
                                     </button>
-
                                 </div>
 
                             </form>
-
                         )}
 
                     </div>
@@ -321,7 +329,7 @@ export default function TaskModal({ task, onClose, users = [] }: TaskModalProps)
 
             </div>
 
-            {/* IMAGE PREVIEW */}
+            {/* PREVIEW */}
             {preview && (
                 <div
                     className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]"

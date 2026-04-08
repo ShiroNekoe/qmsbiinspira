@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, Kanban, KanbanSquareIcon, LayoutGrid, StepBack } from 'lucide-react';
+import { BookOpen, Drill, FolderGit2, Kanban, KanbanSquareIcon, LayoutGrid, StepBack } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -26,6 +26,11 @@ const mainNavItems: NavItem[] = [
         title: 'QMS Requests',
         href: '/requests',
         icon: KanbanSquareIcon,
+    },
+    {   
+        title: 'Technicians',
+        href: '/technicians',
+        icon: Drill,
     }
 ];
 

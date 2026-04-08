@@ -1,3 +1,5 @@
+"use client"
+
 import KanbanBoard from "../../components/KanbanBoard"
 import { Head, Link, usePage } from "@inertiajs/react"
 import AppLayout from "@/layouts/app-layout"
@@ -32,9 +34,11 @@ type Toast = {
 export default function Index({ tasks, users }: Props) {
 
     const { auth, errors, flash } = usePage().props as any
-    const userRole = auth.user.role
+    const userRoles = auth?.user?.roles || []
+    const userRole = userRoles[0] ?? null
 
     const [toasts, setToasts] = useState<Toast[]>([])
+    const [search, setSearch] = useState("") // ✅ NEW
 
     // 🔥 helper add toast
     const addToast = (text: string, type: "success" | "error" = "success") => {
@@ -70,6 +74,16 @@ export default function Index({ tasks, users }: Props) {
         }
     }, [flash])
 
+    // ✅ FILTER TASKS (BY TITLE)
+    const filteredTasks = Object.fromEntries(
+        Object.entries(tasks).map(([status, taskList]) => [
+            status,
+            taskList.filter((task) =>
+                task.title.toLowerCase().includes(search.toLowerCase())
+            ),
+        ])
+    )
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: "QMS Requests",
@@ -81,13 +95,12 @@ export default function Index({ tasks, users }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="QMS Requests" />
 
-            {/* 🔥 TOAST CONTAINER */}
+            {/* TOAST */}
             <div className="fixed top-5 right-5 z-50 space-y-2">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className="px-4 py-2 rounded-lg shadow-lg text-white
-                                   bg-red-500
+                        className="px-4 py-2 rounded-lg shadow-lg text-white bg-red-500
                                    transform transition-all duration-300
                                    translate-x-0 opacity-100
                                    animate-[slideIn_0.3s_ease]"
@@ -97,7 +110,6 @@ export default function Index({ tasks, users }: Props) {
                 ))}
             </div>
 
-            {/* 🔥 INLINE ANIMATION STYLE */}
             <style>
                 {`
                 @keyframes slideIn {
@@ -115,7 +127,7 @@ export default function Index({ tasks, users }: Props) {
 
             <div className="p-6 space-y-6">
 
-                {/* Page Header */}
+                {/* HEADER */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-xl bg-blue-500/10">
@@ -132,11 +144,12 @@ export default function Index({ tasks, users }: Props) {
                     </div>
                 </div>
 
-                {/* Board Container */}
+                {/* BOARD */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
 
-                    {/* Board Header */}
+                    {/* BOARD HEADER */}
                     <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+
                         <div>
                             <h2 className="font-semibold text-gray-800 text-sm">
                                 Request Workflow
@@ -146,21 +159,34 @@ export default function Index({ tasks, users }: Props) {
                             </p>
                         </div>
 
+                        {/* 🔥 SEARCH (TAMBAHAN, TIDAK MERUSAK LAYOUT) */}
+                        <div className="absolute left-1/2 transform -translate-x-1/2">
+                            <input
+                                type="text"
+                                placeholder="Search request..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-64 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
                         {userRole === "unit" && (
                             <Link
                                 href="/requests/create"
-                                className="flex items-center gap-1.5 bg-gray-400 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150"
+                                className="flex items-center gap-1.5 bg-gray-600 hover:bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
                             >
                                 <Plus size={16} />
                                 Create Request
                             </Link>
                         )}
+
                     </div>
 
-                    {/* Board Content */}
+                    {/* BOARD CONTENT */}
                     <div className="p-5">
                         <KanbanBoard
-                            tasks={tasks}
+                            key={search} // 🔥 ini kuncinya
+                            tasks={filteredTasks}
                             users={users}
                             user_role={userRole}
                         />

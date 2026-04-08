@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->nullable();
 
-            $table->enum('role', ['unit','technician','admin'])->default('unit');
-
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
 

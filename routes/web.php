@@ -8,6 +8,7 @@ use App\Notifications\TaskStatusUpdated;
 use App\Models\RevisionRequest;
 use App\Services\WhatsappService;
 use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\UserController;
 
 
 Route::inertia('/', 'welcome', [
@@ -18,29 +19,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 });
 
-Route::middleware(['auth'])->group(function(){
-Route::get('/requests', [RevisionRequestController::class, 'index'])
-    ->name('requests.index');
+Route::middleware(['auth'])->group(function () {
 
-Route::post('/requests',[RevisionRequestController::class,'store']);
+    Route::get('/technicians', [UserController::class, 'index'])
+        ->name('technicians.index');
 
-Route::patch('/requests/{id}/status',
-[RevisionRequestController::class,'updateStatus']);
+    Route::get('/technicians/create', [UserController::class, 'createTechnician'])
+        ->name('technicians.create');
 
-Route::get('/requests/create', [RevisionRequestController::class,'create']);
-Route::post('/requests', [RevisionRequestController::class,'store']);
+    Route::post('/technicians', [UserController::class, 'storeTechnician'])
+        ->name('technicians.store');
 
-Route::get('/test-wa', function () {
+    Route::get('/requests', [RevisionRequestController::class, 'index'])
+        ->name('requests.index');
 
-    $phone = "6289515779877"; // ganti dengan nomor kamu
+    Route::post('/requests', [RevisionRequestController::class, 'store']);
 
-    $message = "halo nyekk monyekkkkk🚀";
+    Route::patch(
+        '/requests/{id}/status',
+        [RevisionRequestController::class, 'updateStatus']
+    );
 
-    WhatsappService::send($phone, $message);
+    Route::get('/requests/create', [RevisionRequestController::class, 'create']);
+    Route::post('/requests', [RevisionRequestController::class, 'store']);
 
-    return "WA Sent";
+    Route::get('/test-wa', function () {
+
+        $phone = "6289515779877"; // ganti dengan nomor kamu
+
+        $message = "halo nyekk monyekkkkk🚀";
+
+        WhatsappService::send($phone, $message);
+
+        return "WA Sent";
+    });
 });
 
-});
-
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

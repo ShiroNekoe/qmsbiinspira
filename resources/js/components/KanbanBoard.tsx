@@ -99,13 +99,40 @@ const COLUMN_CONFIG = {
    TOAST
 ========================= */
 
-function showToast(message: string) {
+function showToast(
+    message: string,
+    type: "success" | "error" | "info" = "info"
+) {
     const toast = document.createElement("div")
-    toast.innerText = message
-    toast.className =
-        "fixed top-5 right-5 bg-yellow-400 text-black px-4 py-2 rounded shadow-lg z-50 animate-slideIn"
+
+    const base =
+        "fixed top-5 right-5 px-4 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 text-sm font-medium backdrop-blur-md border transition-all duration-300 animate-slideIn"
+
+    const variants = {
+        success: "bg-green-50 text-green-700 border-green-200",
+        error: "bg-red-50 text-red-700 border-red-200",
+        info: "bg-gray-900 text-white border-gray-800",
+    }
+
+    const icons = {
+        success: "✓",
+        error: "⚠",    
+        info: "ℹ",
+    }
+
+    toast.className = `${base} ${variants[type]}`
+    toast.innerHTML = `
+        <span class="text-base">${icons[type]}</span>
+        <span>${message}</span>
+    `
+
     document.body.appendChild(toast)
-    setTimeout(() => toast.remove(), 2500)
+
+    setTimeout(() => {
+        toast.style.opacity = "0"
+        toast.style.transform = "translateY(-10px)"
+        setTimeout(() => toast.remove(), 300)
+    }, 2500)
 }
 
 /* =========================
